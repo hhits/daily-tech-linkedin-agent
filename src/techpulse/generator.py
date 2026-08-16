@@ -26,23 +26,23 @@ def validate_post(post: str) -> list[str]:
 
 
 class GeminiPostGenerator:
-    """Generate H&H TechPulse posts with Google's Gemini Developer API."""
+    """Generate H&H TechPulse posts with Google's Gemini Interactions API."""
 
-    def __init__(self, api_key: str, model: str = "gemini-2.5-flash", http_post=None, sleep=time.sleep):
+    def __init__(self, api_key: str, model: str = "gemini-2.5-flash-lite", http_post=None, sleep=time.sleep):
         self.api_key = api_key
         self.model = model
         self.http_post = http_post or self._post
         self.sleep = sleep
 
     def _post(self, body):
-        url = (
-            "https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{self.model}:generateContent?key={self.api_key}"
-        )
+        url = "https://generativelanguage.googleapis.com/v1/interactions"
         req = urllib.request.Request(
             url,
             data=json.dumps(body).encode(),
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "x-goog-api-key": self.api_key,
+            },
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=60) as response:
@@ -69,6 +69,16 @@ class GeminiPostGenerator:
                 self.sleep(min(2**attempt + random.uniform(0, 0.5), 30.0))
         raise RuntimeError("Gemini request exhausted retry attempts")
 
+    @staticmethod
+    def _extract_text(result: dict) -> str:
+        for step in result.get("steps", []):
+            if step.get("type") != "model_output":
+                continue
+            for content in step.get("content", []):
+                if content.get("type") == "text" and content.get("text"):
+                    return content["text"].strip()
+        raise RuntimeError(f"Gemini response did not contain generated text: {result}")
+
     def generate(self, topic: TopicCandidate) -> str:
         prompt = f"""Create a LinkedIn post from this current technology topic.
 
@@ -78,15 +88,17 @@ Summary: {topic.summary[:4000]}
 
 Do not claim facts beyond the supplied material and widely established technical knowledge."""
         body = {
-            "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 600},
+            "model": self.model,
+            "input": prompt,
+            "system_instruction": SYSTEM_PROMPT,
+            "generation_config": {
+                "temperature": 0.7,
+                "max_output_tokens": 600,
+            },
+            "store": False,
         }
         result = self._request_with_retry(body)
-        try:
-            post = result["candidates"][0]["content"]["parts"][0]["text"].strip()
-        except (KeyError, IndexError, TypeError) as exc:
-            raise RuntimeError(f"Gemini response did not contain generated text: {result}") from exc
+        post = self._extract_text(result)
         errors = validate_post(post)
         if errors:
             raise ValueError("Invalid generated post: " + "; ".join(errors))
