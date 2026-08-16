@@ -1,6 +1,5 @@
 import json
 import random
-import re
 import time
 import urllib.error
 import urllib.request
@@ -8,22 +7,20 @@ import urllib.request
 from .researcher import TopicCandidate
 
 SYSTEM_PROMPT = """You are H&H TechPulse, the technology content writer for H&H IT Solutions.
-Write one original LinkedIn post for IT leaders and technology professionals.
-Be practical, technically credible, concise, and educational. Avoid clickbait,
-empty marketing language, fabricated statistics, invented quotes, and claims
-that H&H IT Solutions performed work that is not in the source. Mention H&H IT
-Solutions naturally only when useful. End with one thoughtful question. Use
-3-6 relevant hashtags. Return only the post text."""
+Write an original, practical LinkedIn post for IT professionals and technology decision-makers.
+Use a professional, technical, approachable voice. Avoid clickbait, unsupported claims, and excessive emojis.
+Keep the post around 150-250 words, include a useful takeaway, and finish with 3-6 relevant hashtags.
+Naturally mention H&H IT Solutions when appropriate, without making unsupported claims about the company."""
 
 
 def validate_post(post: str) -> list[str]:
     errors = []
-    if not 100 <= len(post.strip()) <= 3000:
+    if not 100 <= len(post) <= 3000:
         errors.append("post length must be between 100 and 3000 characters")
-    tags = re.findall(r"(?<!\w)#\w+", post)
-    if not 3 <= len(tags) <= 6:
+    hashtag_count = sum(1 for token in post.split() if token.startswith("#"))
+    if not 3 <= hashtag_count <= 6:
         errors.append("post must contain 3-6 hashtags")
-    if re.search(r"\b(TODO|TBD|INSERT|PLACEHOLDER)\b", post, re.I):
+    if "[INSERT" in post or "<PLACEHOLDER>" in post:
         errors.append("post contains a placeholder")
     return errors
 
@@ -48,34 +45,44 @@ class GeminiPostGenerator:
             headers={"Content-Type": "application/json"},
             method="POST",
         )
+        with urllib.request.urlopen(req, timeout=60) as response:
+            return json.loads(response.read().decode())
+
+    def _request_with_retry(self, body):
         for attempt in range(4):
             try:
-                with urllib.request.urlopen(req, timeout=60) as response:
-                    return json.loads(response.read().decode())
+                return self.http_post(body)
             except urllib.error.HTTPError as exc:
                 if exc.code != 429 or attempt == 3:
-                    raise RuntimeError(f"Gemini API HTTP {exc.code}: {exc.read().decode(errors='replace')}") from exc
+                    raise RuntimeError(
+                        f"Gemini API HTTP {exc.code}: {exc.read().decode(errors='replace')}"
+                    ) from exc
                 retry_after = exc.headers.get("Retry-After")
                 try:
                     delay = float(retry_after) if retry_after else 2**attempt
-                except ValueError:
+                except (TypeError, ValueError):
                     delay = 2**attempt
                 self.sleep(min(delay + random.uniform(0, 0.5), 30.0))
             except RuntimeError as exc:
                 if "429" not in str(exc) or attempt == 3:
                     raise
                 self.sleep(min(2**attempt + random.uniform(0, 0.5), 30.0))
-
         raise RuntimeError("Gemini request exhausted retry attempts")
 
     def generate(self, topic: TopicCandidate) -> str:
-        prompt = f"""Create a LinkedIn post from this current technology topic.\n\nTitle: {topic.title}\nSource: {topic.url}\nSummary: {topic.summary[:4000]}\n\nDo not claim facts beyond the supplied material and widely established technical knowledge."""
+        prompt = f"""Create a LinkedIn post from this current technology topic.
+
+Title: {topic.title}
+Source: {topic.url}
+Summary: {topic.summary[:4000]}
+
+Do not claim facts beyond the supplied material and widely established technical knowledge."""
         body = {
             "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {"temperature": 0.7, "maxOutputTokens": 600},
         }
-        result = self.http_post(body)
+        result = self._request_with_retry(body)
         try:
             post = result["candidates"][0]["content"]["parts"][0]["text"].strip()
         except (KeyError, IndexError, TypeError) as exc:
@@ -86,5 +93,4 @@ class GeminiPostGenerator:
         return post
 
 
-# Backward-compatible name for callers that imported the old generator class.
 PostGenerator = GeminiPostGenerator
