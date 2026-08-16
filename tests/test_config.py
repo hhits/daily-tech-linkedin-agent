@@ -10,4 +10,4 @@ def test_settings_reads_gemini_configuration(monkeypatch):
 
     assert settings.gemini_api_key == "gemini-test"
     assert settings.linkedin_organization_id == "123"
-    assert settings.gemini_model == "gemini-2.5-flash"
+    assert settings.gemini_model == "gemini-3.5-flash-lite"
