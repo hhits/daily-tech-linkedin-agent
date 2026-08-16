@@ -4,7 +4,7 @@ H&H TechPulse researches current technology stories, writes an original H&H IT S
 
 ## Daily flow
 
-1. GitHub Actions runs on weekdays at 9:00 AM Central Standard Time.
+1. GitHub Actions runs on weekdays on the configured UTC schedule.
 2. RSS/Atom technology feeds are collected.
 3. A relevant, fresh topic is selected while excluding recent history.
 4. An LLM writes and validates the post.
@@ -50,6 +50,6 @@ python -m techpulse.main
 
 GitHub Actions includes a `workflow_dispatch` trigger. Open **Actions → H&H TechPulse Daily LinkedIn Post → Run workflow** after configuring the secrets.
 
-## Important scheduling note
+## Scheduling note
 
-GitHub Actions cron uses UTC. The included schedule is `0 14 * * 1-5`, which is 9:00 AM Central Standard Time (UTC-6). During daylight time, adjust the cron to `0 14` only if your desired local time is 9:00 AM CDT? No: 9:00 AM CDT is 14:00 UTC, while 9:00 AM CST is 15:00 UTC. For a strict 9:00 AM America/Chicago schedule year-round, use an external scheduler or a two-season cron configuration.
+GitHub Actions cron uses UTC. The included `0 14 * * 1-5` schedule corresponds to 9:00 AM Central Daylight Time and 8:00 AM Central Standard Time. GitHub Actions does not provide a native America/Chicago timezone in cron, so a strict 9:00 AM local-time schedule requires a DST-aware scheduler or separate seasonal schedules.
