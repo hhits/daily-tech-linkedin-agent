@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from .config import Settings
-from .generator import PostGenerator, validate_post
+from .generator import GeminiPostGenerator, validate_post
 from .history import History
 from .linkedin import LinkedInPublisher
 from .researcher import FeedResearcher
@@ -28,8 +28,12 @@ def main():
     settings = Settings.from_env()
     history = History.load(settings.history_path)
     researcher = FeedResearcher()
-    generator = PostGenerator(settings.openai_api_key, settings.openai_model)
-    publisher = LinkedInPublisher(settings.linkedin_access_token, settings.linkedin_organization_id, settings.linkedin_version)
+    generator = GeminiPostGenerator(settings.gemini_api_key, settings.gemini_model)
+    publisher = LinkedInPublisher(
+        settings.linkedin_access_token,
+        settings.linkedin_organization_id,
+        settings.linkedin_version,
+    )
     post_id = run(settings, researcher, generator, publisher, history)
     print(f"Published H&H TechPulse post: {post_id}")
 

@@ -7,21 +7,25 @@ H&H TechPulse researches current technology stories, writes an original H&H IT S
 1. GitHub Actions runs on weekdays on the configured UTC schedule.
 2. RSS/Atom technology feeds are collected.
 3. A relevant, fresh topic is selected while excluding recent history.
-4. An LLM writes and validates the post.
+4. Google Gemini writes and validates the post.
 5. The LinkedIn organization post is published.
 6. The topic and returned LinkedIn post ID are stored in `data/topics.json`.
+
+## AI provider
+
+The agent uses Google's Gemini Developer API by default with `gemini-2.5-flash`. Google currently lists a free tier for Gemini 2.5 Flash, including free input/output token pricing, subject to account/model rate limits. Free-tier availability and limits can change, so check Google's current pricing and rate-limit documentation before relying on it for production volume.
 
 ## Required GitHub configuration
 
 Add these **repository secrets** under Settings → Secrets and variables → Actions:
 
-- `OPENAI_API_KEY`
+- `GEMINI_API_KEY`
 - `LINKEDIN_ACCESS_TOKEN`
 - `LINKEDIN_ORGANIZATION_ID`
 
 Optional repository variables:
 
-- `OPENAI_MODEL` — defaults to `gpt-4.1-mini`
+- `GEMINI_MODEL` — defaults to `gemini-2.5-flash`
 - `LINKEDIN_VERSION` — defaults to `202607`
 
 Never commit API keys or access tokens.
@@ -40,7 +44,7 @@ source .venv/bin/activate
 pip install -e '.[test]'
 pytest -q
 
-export OPENAI_API_KEY='...'
+export GEMINI_API_KEY='...'
 export LINKEDIN_ACCESS_TOKEN='...'
 export LINKEDIN_ORGANIZATION_ID='...'
 python -m techpulse.main
