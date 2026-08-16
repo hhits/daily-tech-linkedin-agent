@@ -7,7 +7,7 @@ class Settings:
     openai_api_key: str
     linkedin_access_token: str
     linkedin_organization_id: str
-    openai_model: str = "gpt-5.6-mini"
+    openai_model: str = "gpt-4.1-mini"
     linkedin_version: str = "202607"
     max_history_items: int = 60
     history_path: str = "data/topics.json"
@@ -24,7 +24,7 @@ class Settings:
             openai_api_key=required("OPENAI_API_KEY"),
             linkedin_access_token=required("LINKEDIN_ACCESS_TOKEN"),
             linkedin_organization_id=required("LINKEDIN_ORGANIZATION_ID"),
-            openai_model=os.getenv("OPENAI_MODEL", "gpt-5.6-mini"),
+            openai_model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
             linkedin_version=os.getenv("LINKEDIN_VERSION", "202607"),
             max_history_items=int(os.getenv("MAX_HISTORY_ITEMS", "60")),
             history_path=os.getenv("HISTORY_PATH", "data/topics.json"),
