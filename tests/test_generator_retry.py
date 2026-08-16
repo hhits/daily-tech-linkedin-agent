@@ -4,8 +4,16 @@ from techpulse.generator import GeminiPostGenerator
 def test_generator_retries_gemini_429():
     calls = []
     response = {
-        "candidates": [
-            {"content": {"parts": [{"text": "AI is changing IT operations with practical automation.\n\nH&H IT Solutions can help teams combine automation with observability for faster response.\n\n#AI #ITOperations #Automation"}]}}
+        "steps": [
+            {
+                "type": "model_output",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "AI is changing IT operations with practical automation.\n\nH&H IT Solutions can help teams combine automation with observability for faster response.\n\n#AI #ITOperations #Automation",
+                    }
+                ],
+            }
         ]
     }
 
