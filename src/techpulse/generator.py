@@ -1,5 +1,8 @@
 import json
+import random
 import re
+import time
+import urllib.error
 import urllib.request
 
 from .researcher import TopicCandidate
@@ -38,8 +41,23 @@ class PostGenerator:
             headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=60) as response:
-            return json.loads(response.read().decode())
+        max_attempts = 4
+        for attempt in range(max_attempts):
+            try:
+                with urllib.request.urlopen(req, timeout=60) as response:
+                    return json.loads(response.read().decode())
+            except urllib.error.HTTPError as exc:
+                if exc.code != 429 or attempt == max_attempts - 1:
+                    raise
+                retry_after = exc.headers.get("Retry-After")
+                try:
+                    delay = max(0.0, float(retry_after)) if retry_after else 2**attempt
+                except ValueError:
+                    delay = 2**attempt
+                delay += random.uniform(0, 0.5)
+                time.sleep(min(delay, 30.0))
+
+        raise RuntimeError("OpenAI request exhausted retry attempts")
 
     def generate(self, topic: TopicCandidate) -> str:
         prompt = f"""Create a LinkedIn post from this current technology topic.\n\nTitle: {topic.title}\nSource: {topic.url}\nSummary: {topic.summary[:4000]}\n\nDo not claim facts beyond the supplied material and widely established technical knowledge."""
